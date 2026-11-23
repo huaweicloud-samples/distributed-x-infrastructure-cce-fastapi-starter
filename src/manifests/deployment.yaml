@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fastapi-app
+  labels:
+    app: fastapi-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fastapi-app
+  template:
+    metadata:
+      labels:
+        app: fastapi-app
+    spec:
+      containers:
+      - name: fastapi
+        image: <SWR_IMAGE_URL>
+        ports:
+        - containerPort: 8000
+        env:
+        - name: ENV
+          value: "production"
+        - name: DB_USER
+          value: "app"
+        - name: DB_LOCATION
+          value: "<RDS_ENDPOINT>"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: password
+        - name: AUTH0_DOMAIN
+          value: "<AUTH0_DOMAIN>"
+        - name: AUTH0_CLIENT_ID
+          value: "<AUTH0_CLIENT_ID>"
+        - name: AUTH0_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: auth0-credentials
+              key: client-secret
+        - name: AUTH0_CALLBACK_URL
+          value: "https://<ELB_PUBLIC_IP>/auth/callback"
+        - name: AUTH0_LOGOUT_URL
+          value: "https://<ELB_PUBLIC_IP>"
+        - name: APP_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: secret-key
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+          limits:
+            cpu: "2000m"
+            memory: "4096Mi"
